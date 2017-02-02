@@ -201,32 +201,35 @@ class Machine:
         for matchbox, bead in self.moves:
             matchbox.addBeads(bead, beadChange)
 
-if __name__ == "__main__":
-    machine = Machine()
-    
-    board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
+    def playAgainstHuman(self, training=False):
+        board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
                    [Tile.Empty, Tile.Empty, Tile.Empty],
                    [Tile.Empty, Tile.Empty, Tile.Empty]])
 
-    machine.startTrainingGame()
+        if training:
+            self.startTrainingGame()
 
-    machineTurn = True
-    while not board.isGameOver():
-        if machineTurn:
-            board = machine.makeMove(board, True)
-        else:
-            print("\n" + str(board))
-            x, y = -1, -1
-            while not board.isValidMove(x, y):
-                try:
-                    x, y = list(map(int, input("Enter your move (x y): ").split()))
-                    if not board.isValidMove(x, y):
-                        print("2 integers between 0 and 2, at a position that is empty!")
-                except (TypeError, ValueError):
-                    print("Oi! Enter 2 integers between 0 and 2 with a space between 'em.")
-            board = board.makeMove((x, y))
-        machineTurn = not machineTurn
+        machineTurn = True
+        while not board.isGameOver():
+            if machineTurn:
+                board = self.makeMove(board, training)
+            else:
+                print("\n{}".format(board))
+                x, y = -1, -1
+                while not board.isValidMove(x, y):
+                    try:
+                        x, y = list(map(int, input("Enter your move (x y): ").split()))
+                        if not board.isValidMove(x, y):
+                            print("2 integers between 0 and 2, at a position that is empty!")
+                    except (TypeError, ValueError):
+                        print("Oi! Enter 2 integers between 0 and 2 with a space between 'em.")
+                board = board.makeMove((x, y))
+            machineTurn = not machineTurn
 
-    result = board.isGameOver()
-    print("\n" + str(board) + "\n" + str(result) + " is the winner!")
-    machine.endTrainingGame(result)
+        result = board.isGameOver()
+        print("\n{}\n{}".format(board, "You win! Congrats! :P" if result is Tile.Crosses else "You lost! D: But how??" if result is Tile.Noughts else "It was a tie! :D"))
+        self.endTrainingGame(result)
+
+if __name__ == "__main__":
+    machine = Machine()
+    machine.playAgainstHuman(True)
