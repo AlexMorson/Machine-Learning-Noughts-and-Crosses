@@ -69,7 +69,10 @@ class Box:
                     return (x, y)
 
     def addBeads(self, bead, number):
-        self.beads[bead[1]][bead[0]] += number
+        if self.beads[bead[1]][bead[0]] + number < 0:
+            self.beads[bead[1]][bead[0]] = 0
+        else:
+            self.beads[bead[1]][bead[0]] += number
 
 class Board:
     def __init__(self, state):
