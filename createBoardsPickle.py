@@ -62,21 +62,31 @@ def getAllBoardsFrom(startBoard):
     getNextBoards(startBoard, Tile.Noughts)
     return boards
 
-def removeOddTurns(boards):
+def splitEvenOddBoards(boards):
     evenBoards = []
+    oddBoards = []
     for b in boards:
         c = 0
         for y in range(3):
             for x in range(3):
                 if b[y][x] is not Tile.Empty:
                     c += 1
-        if c in (0, 2, 4, 6):
+        if c % 2 == 0:
             evenBoards.append(b)
-    return evenBoards
+        else:
+            oddBoards.append(b)
+            
+    return (evenBoards, oddBoards)
 
 if __name__ == "__main__":
     boards = getAllBoardsFrom([[Tile.Empty,Tile.Empty,Tile.Empty],[Tile.Empty,Tile.Empty,Tile.Empty],[Tile.Empty,Tile.Empty,Tile.Empty]])
-    boards = removeOddTurns(boards)
+    evenBoards, oddBoards = splitEvenOddBoards(boards)
 
     with open("boards.pickle", "wb") as f:
         pickle.dump(boards, f)
+        
+    with open("evenBoards.pickle", "wb") as f:
+        pickle.dump(evenBoards, f)
+        
+    with open("oddBoards.pickle", "wb") as f:
+        pickle.dump(oddBoards, f)
