@@ -1,18 +1,34 @@
 import random
 from enum import Enum
+import pickle
 
 class Tile(Enum):
     Empty = 0
     Noughts = 1
     Crosses = 2
 
+try:
+    with open("boards.pickle", "rb") as file:
+        ALL_BOARDS = pickle.load(file)
+except FileNotFoundError:
+    print("Place the boards.pickle file in the same directory as the python file")
+    raise
+
 class Matchbox:
-    def __init__(self, board):
-        self.board = board
-        self.box = Box(self.state)
+    def __init__(self, state):
+        self.board = Board(state)
+        self.box = Box()
+
+        self.fill()
+
+    def fill(self):
+        self.box.fill(self.board)
 
 class Box:
-    def __init__(self, board):
+    def __init__(self):
+        self.beads = [0 for y in range(3) for x in range(3)]
+
+    def fill(self, board):
         def eliminate(*positions):
             for x,y in positions:
                 eligible[y][x] = False
@@ -34,7 +50,8 @@ class Box:
 
         beadCount = 2**(3-board.moveCount()//2)
 
-        self.beads = [beadCount if eligible[y][x] else 0 for x in range(3) for y in range(3)]
+        # A 1D array makes it easier to pick a random bead
+        self.beads = [beadCount if eligible[y][x] else 0 for y in range(3) for x in range(3)]
 
     def pickBead(self): #Returns a pos: (x, y)
         beadNum = random.randint(1, sum(self.beads))
@@ -74,4 +91,29 @@ class Board:
         return self.rotate90().rotate90().rotate90()
 
     def standardise(self):
-        pass #return the "standard" board state (rotation/reflection)
+        currentBoard = self
+        for rot in range(4):
+            if currentBoard.state in ALL_BOARDS:
+                return currentBoard
+            currentBoard = currentBoard.rotate90()
+
+        currentBoard = self.flipH()
+        for rot in range(4):
+            if currentBoard.state in ALL_BOARDS:
+                return currentBoard
+            currentBoard = currentBoard.rotate90()
+
+        raise ValueError("Cannot find standardised board")
+
+class Machine:
+    def __init__(self):
+        self.matchboxes = [Matchbox(board) for board in ALL_BOARDS]
+
+    def getMatchbox(self, board):
+        standardisedBoard = board.standardise()
+        for matchbox in self.matchboxes:
+            if matchbox.board == standardisedBoard:
+                return matchbox
+
+if __name__ == "__main__":
+    machine = Machine()
