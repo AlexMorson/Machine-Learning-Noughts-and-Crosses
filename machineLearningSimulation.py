@@ -10,10 +10,8 @@ class Tile(Enum):
 try:
     with open("boards.pickle", "rb") as file:
         ALL_BOARDS = pickle.load(file)
-    with open("evenBoards.pickle", "rb") as file:
-        EVEN_BOARDS = pickle.load(file)
 except FileNotFoundError:
-    print("Place the boards.pickle files in the same directory as the python file")
+    print("Place boards.pickle in the same directory as the python file")
     raise
 
 class Matchbox:
@@ -31,6 +29,9 @@ class Matchbox:
 
     def addBeads(self, bead, number):
         self.box.addBeads(bead, number)
+
+    def isEmpty(self):
+        return self.box.getBeadCount() == 0
 
 class Box:
     def __init__(self):
@@ -60,8 +61,11 @@ class Box:
 
         self.beads = [[beadCount if eligible[y][x] else 0 for x in range(3)] for y in range(3)]
 
+    def getBeadCount(self):
+        return sum(map(sum,self.beads))
+
     def pickBead(self): #Returns a pos: (x, y)
-        beadNum = random.randint(1, sum(map(sum,self.beads)))
+        beadNum = random.randint(1, self.getBeadCount())
         for y in range(3):
             for x in range(3):
                 beadNum -= self.beads[y][x]
@@ -165,7 +169,7 @@ class Board:
 
 class Machine:
     def __init__(self):
-        self.matchboxes = [Matchbox(board) for board in EVEN_BOARDS]
+        self.matchboxes = [Matchbox(board) for board in ALL_BOARDS]
         self.moves = []
 
     def getMatchbox(self, board):
@@ -198,23 +202,30 @@ class Machine:
 
         return board.makeMove(bead)
 
-    def endTrainingGame(self, result): #Tile.Empty = draw
-        beadChange = 1 if result == Tile.Empty else 3 if result == Tile.Noughts else -1
+    def endTrainingGame(self, result, started): #Tile.Empty = draw
+        beadChange = 1 if result == Tile.Empty else 3 if ((result == Tile.Noughts and started) or (result == Tile.Crosses and not started)) else -1
+        carry = 0
+        for matchbox, bead in self.moves[::-1]:
+            matchbox.addBeads(bead, beadChange + carry)
+            carry = 0
+            if matchbox.isEmpty():
+                matchbox.fill()
+                carry = -1
+            
 
-        for matchbox, bead in self.moves:
-            matchbox.addBeads(bead, beadChange)
-
-    def playAgainstHuman(self, training=False):
+    def playAgainstHuman(self, training=False, machineStart=True):
         board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
-                   [Tile.Empty, Tile.Empty, Tile.Empty],
-                   [Tile.Empty, Tile.Empty, Tile.Empty]])
+                       [Tile.Empty, Tile.Empty, Tile.Empty],
+                       [Tile.Empty, Tile.Empty, Tile.Empty]])
 
         if training:
             self.startTrainingGame()
 
-        machineTurn = True
+        machineTurn = machineStart
         while not board.isGameOver():
             if machineTurn:
+                print("\n{}".format(board.standardise()))
+                print(self.getMatchbox(board).box.beads)
                 board = self.makeMove(board, training)
             else:
                 print("\n{}".format(board))
@@ -230,9 +241,49 @@ class Machine:
             machineTurn = not machineTurn
 
         result = board.isGameOver()
-        print("\n{}\n{}".format(board, "You win! Congrats! :P" if result is Tile.Crosses else "You lost! D: But how??" if result is Tile.Noughts else "It was a tie! :D"))
-        self.endTrainingGame(result)
+        print("\n{}\n{}!".format(board, "Crosses won" if result is Tile.Crosses else "Noughts won" if result is Tile.Noughts else "It was a tie"))
+
+        if training:
+            self.endTrainingGame(result, machineStart)
 
 if __name__ == "__main__":
-    machine = Machine()
-    machine.playAgainstHuman(True)
+    machine1 = Machine()
+    machine2 = Machine()
+
+    winnings = {
+        0 : 0,
+        1 : 0,
+        2 : 0
+    }
+
+    print("Start training.")
+    for i in range(1000):
+        board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
+                       [Tile.Empty, Tile.Empty, Tile.Empty],
+                       [Tile.Empty, Tile.Empty, Tile.Empty]])
+
+        machine1.startTrainingGame()
+        machine2.startTrainingGame()
+    
+        machine1Start = random.randint(0, 1)
+
+        machine1Turn = machine1Start
+        while not board.isGameOver():
+            if machine1Turn:
+                board = machine1.makeMove(board, True)
+            else:
+                board = machine2.makeMove(board, True)
+            machine1Turn = not machine1Turn
+        
+        result = board.isGameOver()
+        if result == Tile.Empty:
+            winnings[0] += 1
+        elif (result == Tile.Noughts and machine1Start) or (result == Tile.Crosses and not machine1Start):
+            winnings[1] += 1
+        else:
+            winnings[2] += 1
+        
+        machine1.endTrainingGame(result, machine1Start)
+        machine2.endTrainingGame(result, not machine1Start)
+    print("Stopped training.")
+    print("Winnings:\n",winnings)
