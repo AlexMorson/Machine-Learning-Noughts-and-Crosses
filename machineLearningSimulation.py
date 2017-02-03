@@ -181,7 +181,7 @@ class Machine:
     def startTrainingGame(self):
         self.moves = []
 
-    def makeMove(self, board, training=False):
+    def makeMove(self, board, training=True):
         #Assuming a full board or finished game will never be given
         def findEmptyTile(board):
             for y in range(3):
@@ -211,22 +211,23 @@ class Machine:
             if matchbox.isEmpty():
                 matchbox.fill()
                 carry = -1
-            
 
-    def playAgainstHuman(self, training=False, machineStart=True):
+class GameManager:
+    @staticmethod
+    def playAgainstHuman(machine, machineStart=True, training=True):
         board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty]])
 
         if training:
-            self.startTrainingGame()
+            machine.startTrainingGame()
 
         machineTurn = machineStart
         while not board.isGameOver():
             if machineTurn:
                 print("\n{}".format(board.standardise()))
-                print(self.getMatchbox(board).box.beads)
-                board = self.makeMove(board, training)
+                print(machine.getMatchbox(board).box.beads)
+                board = machine.makeMove(board, training)
             else:
                 print("\n{}".format(board))
                 x, y = -1, -1
@@ -244,46 +245,70 @@ class Machine:
         print("\n{}\n{}!".format(board, "Crosses won" if result is Tile.Crosses else "Noughts won" if result is Tile.Noughts else "It was a tie"))
 
         if training:
-            self.endTrainingGame(result, machineStart)
+            machine.endTrainingGame(result, machineStart)
+
+        return result
+
+    @staticmethod
+    def playAgainstRandom(machine, machineStart=True, training=True):
+        board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
+                       [Tile.Empty, Tile.Empty, Tile.Empty],
+                       [Tile.Empty, Tile.Empty, Tile.Empty]])
+        
+        if training:
+            machine.startTrainingGame()
+        
+        machineTurn = machineStart
+        while not board.isGameOver():
+            if machineTurn:
+                board = machine.makeMove(board, training)
+            else:
+                x, y = -1, -1
+                while not board.isValidMove(x, y):
+                    x, y = random.randint(0, 2), random.randint(0, 2)
+                board = board.makeMove((x, y))
+            machineTurn = not machineTurn
+        
+        result = board.isGameOver()
+        
+        if training:
+            machine.endTrainingGame(result, machineStart)
+        
+        return result
+
+    @staticmethod
+    def playAgainstMachine(machine1, machine2, machine1Start=True, training1=True, training2=True):
+        board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
+                       [Tile.Empty, Tile.Empty, Tile.Empty],
+                       [Tile.Empty, Tile.Empty, Tile.Empty]])
+
+        if training1:
+            machine1.startTrainingGame()
+        if training2:
+            machine2.startTrainingGame()
+
+        machine1Turn = machine1Start
+        while not board.isGameOver():
+            if machine1Turn:
+                board = machine1.makeMove(board, training1)
+            else:
+                board = machine2.makeMove(board, training2)
+            machine1Turn = not machine1Turn
+
+        result = board.isGameOver()
+
+        if training1:
+            machine1.endTrainingGame(result, machine1Start)
+        if training2:
+            machine2.endTrainingGame(result, not machine1Start)
+
+        return result
 
 if __name__ == "__main__":
     machine1 = Machine()
     machine2 = Machine()
 
-    winnings = {
-        0 : 0,
-        1 : 0,
-        2 : 0
-    }
-
     print("Start training.")
-    for i in range(1000):
-        board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
-                       [Tile.Empty, Tile.Empty, Tile.Empty],
-                       [Tile.Empty, Tile.Empty, Tile.Empty]])
-
-        machine1.startTrainingGame()
-        machine2.startTrainingGame()
-    
-        machine1Start = random.randint(0, 1)
-
-        machine1Turn = machine1Start
-        while not board.isGameOver():
-            if machine1Turn:
-                board = machine1.makeMove(board, True)
-            else:
-                board = machine2.makeMove(board, True)
-            machine1Turn = not machine1Turn
-        
-        result = board.isGameOver()
-        if result == Tile.Empty:
-            winnings[0] += 1
-        elif (result == Tile.Noughts and machine1Start) or (result == Tile.Crosses and not machine1Start):
-            winnings[1] += 1
-        else:
-            winnings[2] += 1
-        
-        machine1.endTrainingGame(result, machine1Start)
-        machine2.endTrainingGame(result, not machine1Start)
+    for i in range(10000):
+        GameManager.playAgainstMachine(machine1, machine2, i%2)
     print("Stopped training.")
-    print("Winnings:\n",winnings)
