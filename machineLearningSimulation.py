@@ -1,3 +1,4 @@
+import time
 import random
 from enum import Enum
 import pickle
@@ -202,8 +203,8 @@ class Machine:
 
         return board.makeMove(bead)
 
-    def endTrainingGame(self, result, started): #Tile.Empty = draw
-        beadChange = 1 if result == Tile.Empty else 3 if ((result == Tile.Noughts and started) or (result == Tile.Crosses and not started)) else -1
+    def endTrainingGame(self, result, started, winDelta=3, drawDelta=1, loseDelta=-1): #Tile.Empty = draw
+        beadChange = drawDelta if result == Tile.Empty else winDelta if ((result == Tile.Noughts and started) or (result == Tile.Crosses and not started)) else loseDelta
         carry = 0
         for matchbox, bead in self.moves[::-1]:
             matchbox.addBeads(bead, beadChange + carry)
@@ -214,7 +215,7 @@ class Machine:
 
 class GameManager:
     @staticmethod
-    def playAgainstHuman(machine, machineStart=True, training=True):
+    def playAgainstHuman(machine, machineStart=True, training=True, winDelta=3, drawDelta=1, loseDelta=-1):
         board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty]])
@@ -245,12 +246,12 @@ class GameManager:
         print("\n{}\n{}!".format(board, "Crosses won" if result is Tile.Crosses else "Noughts won" if result is Tile.Noughts else "It was a tie"))
 
         if training:
-            machine.endTrainingGame(result, machineStart)
+            machine.endTrainingGame(result, machineStart, winDelta, drawDelta, loseDelta)
 
         return result
 
     @staticmethod
-    def playAgainstRandom(machine, machineStart=True, training=True):
+    def playAgainstRandom(machine, machineStart=True, training=True, winDelta=3, drawDelta=1, loseDelta=-1):
         board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty]])
@@ -272,12 +273,12 @@ class GameManager:
         result = board.isGameOver()
         
         if training:
-            machine.endTrainingGame(result, machineStart)
+            machine.endTrainingGame(result, machineStart, winDelta, drawDelta, loseDelta)
         
         return result
 
     @staticmethod
-    def playAgainstMachine(machine1, machine2, machine1Start=True, training1=True, training2=True):
+    def playAgainstMachine(machine1, machine2, machine1Start=True, training1=True, training2=True, winDelta1=3, drawDelta1=1, loseDelta1=-1, winDelta2=3, drawDelta2=1, loseDelta2=-1):
         board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty]])
@@ -298,17 +299,24 @@ class GameManager:
         result = board.isGameOver()
 
         if training1:
-            machine1.endTrainingGame(result, machine1Start)
+            machine1.endTrainingGame(result, machine1Start, winDelta1, drawDelta1, loseDelta1)
         if training2:
-            machine2.endTrainingGame(result, not machine1Start)
+            machine2.endTrainingGame(result, not machine1Start, winDelta2, drawDelta2, loseDelta2)
 
         return result
 
 if __name__ == "__main__":
-    machine1 = Machine()
-    machine2 = Machine()
+    with open("trainedMachine.pickle", "rb") as file:
+        machine = pickle.load(file)
 
     print("Start training.")
-    for i in range(10000):
-        GameManager.playAgainstMachine(machine1, machine2, i%2)
+    iteration = 0
+    startTime = time.time()
+    while time.time() - startTime < 60*60:
+        iteration += 1
+        GameManager.playAgainstRandom(machine, iteration%2, True, 0, 0, -1)
     print("Stopped training.")
+    print("Played {} games.".format(iteration))
+
+    with open("trainedMachine2.pickle", "wb") as file:
+        pickle.dump(machine, file)
