@@ -14,7 +14,7 @@ class Tile(Enum):
 try:
     with open("boards.pickle", "rb") as file:
         ALL_BOARDS = pickle.load(file)
-        logging.info("Loaded boards from bords.pickle.")
+        logging.info("Loaded boards from boards.pickle.")
 except FileNotFoundError:
     logging.error("Could not find boards.pickle file.")
     raise
@@ -210,13 +210,10 @@ class Machine:
 
     def endTrainingGame(self, result, started, winDelta=3, drawDelta=1, loseDelta=-1): #Tile.Empty = draw
         beadChange = drawDelta if result == Tile.Empty else winDelta if ((result == Tile.Noughts and started) or (result == Tile.Crosses and not started)) else loseDelta
-        carry = 0
-        for matchbox, bead in self.moves[::-1]:
-            matchbox.addBeads(bead, beadChange + carry)
-            carry = 0
+        for matchbox, bead in self.moves:
+            matchbox.addBeads(bead, beadChange)
             if matchbox.isEmpty():
                 matchbox.fill()
-                carry = -1
 
 class GameManager:
     @staticmethod
