@@ -2,6 +2,9 @@ import time
 import random
 from enum import Enum
 import pickle
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 class Tile(Enum):
     Empty = 0
@@ -11,8 +14,9 @@ class Tile(Enum):
 try:
     with open("boards.pickle", "rb") as file:
         ALL_BOARDS = pickle.load(file)
+        logging.info("Loaded boards from bords.pickle.")
 except FileNotFoundError:
-    print("Place boards.pickle in the same directory as the python file")
+    logging.error("Could not find boards.pickle file.")
     raise
 
 class Matchbox:
@@ -166,7 +170,8 @@ class Board:
                 return currentBoard
             currentBoard = currentBoard.rotate90()
 
-        raise ValueError("Cannot find standardised board")
+        logging.error("Could not find standardised board")
+        raise ValueError
 
 class Machine:
     def __init__(self):
@@ -251,7 +256,7 @@ class GameManager:
         return result
 
     @staticmethod
-    def playAgainstRandom(machine, machineStart=True, training=True, winDelta=3, drawDelta=1, loseDelta=-1):
+    def playAgainstRandom(machine, machineStart=True, training=True, winDelta=0, drawDelta=0, loseDelta=-1):
         board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty]])
@@ -306,17 +311,22 @@ class GameManager:
         return result
 
 if __name__ == "__main__":
-    with open("trainedMachine.pickle", "rb") as file:
+    with open("trainedMachine2.pickle", "rb") as file:
         machine = pickle.load(file)
+        logging.info("Loaded machine from pickle file.")
 
-    print("Start training.")
-    iteration = 0
-    startTime = time.time()
-    while time.time() - startTime < 60*60:
-        iteration += 1
-        GameManager.playAgainstRandom(machine, iteration%2, True, 0, 0, -1)
-    print("Stopped training.")
-    print("Played {} games.".format(iteration))
+    try:
+        logging.info("Start training.")
+        iteration = 0
+        startTime = time.time()
+        while True:
+            iteration += 1
+            GameManager.playAgainstRandom(machine, iteration%2)
+    except KeyboardInterrupt:
+        endTime = time.time()
+        logging.info("Stopped training.")
+        logging.info("Played {} games in {} minutes.".format(iteration, int((endTime-startTime)/60)))
 
     with open("trainedMachine2.pickle", "wb") as file:
         pickle.dump(machine, file)
+        logging.info("Saved trainedMachine to pickle file.")
