@@ -43,24 +43,7 @@ class Box:
         self.beads = [0 for y in range(3) for x in range(3)]
 
     def fill(self, board):
-        def eliminate(*positions):
-            for x,y in positions:
-                eligible[y][x] = False
-        
-        eligible = [[True if board[y][x] is Tile.Empty else False for x in range(3)] for y in range(3)]
-
-        if board == board.rotate90():
-            eliminate((1,0),(2,0),(2,1),(0,2),(1,2),(2,2))
-        if board == board.rotate180():
-            eliminate((1,0),(2,0),(2,1),(2,2))
-        if board == board.flipH():
-            eliminate((0,2),(1,2),(2,2))
-        if board == board.flipV():
-            eliminate((2,0),(2,1),(2,2))
-        if board == board.flipH().rotate90():
-            eliminate((1,0),(2,0),(2,1))
-        if board == board.rotate90().flipH():
-            eliminate((2,1),(1,2),(2,2))
+        eligible = board.getUniqueMoves()
 
         beadCount = int(2**(3-board.getMoveCount()//2))
 
@@ -116,6 +99,28 @@ class Board:
 
     def getMoveCount(self):
         return sum(True if self.state[y][x] is not Tile.Empty else False for y in range(3) for x in range(3))
+
+    def getUniqueMoves(self):
+        def eliminate(*positions):
+            for x,y in positions:
+                moves[y][x] = False
+        
+        moves = [[True if self.state[y][x] is Tile.Empty else False for x in range(3)] for y in range(3)]
+
+        if self == self.rotate90():
+            eliminate((1,0),(2,0),(2,1),(0,2),(1,2),(2,2))
+        if self == self.rotate180():
+            eliminate((1,0),(2,0),(2,1),(2,2))
+        if self == self.flipH():
+            eliminate((0,2),(1,2),(2,2))
+        if self == self.flipV():
+            eliminate((2,0),(2,1),(2,2))
+        if self == self.flipH().rotate90():
+            eliminate((1,0),(2,0),(2,1))
+        if self == self.rotate90().flipH():
+            eliminate((2,1),(1,2),(2,2))
+
+        return moves
 
     def isValidMove(self, x, y):
         return 0 <= x <= 2 and 0 <= y <= 2 and self.state[y][x] is Tile.Empty
@@ -253,7 +258,17 @@ class GameManager:
         return result
 
     @staticmethod
-    def playAgainstRandom(machine, machineStart=True, training=True, winDelta=0, drawDelta=0, loseDelta=-1):
+    def playAgainstRandom(machine, machineStart=True, training=True, winDelta=1, drawDelta=0, loseDelta=-10):
+        def getRandomMove(board):
+            uniqueMoves = board.getUniqueMoves()
+            chosenMove = random.randint(1, sum(map(sum, uniqueMoves)))
+            for y in range(3):
+                for x in range(3):
+                    if uniqueMoves[y][x]:
+                        chosenMove -= 1
+                        if chosenMove <= 0:
+                            return (x, y)
+        
         board = Board([[Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty],
                        [Tile.Empty, Tile.Empty, Tile.Empty]])
@@ -266,10 +281,7 @@ class GameManager:
             if machineTurn:
                 board = machine.makeMove(board, training)
             else:
-                x, y = -1, -1
-                while not board.isValidMove(x, y):
-                    x, y = random.randint(0, 2), random.randint(0, 2)
-                board = board.makeMove((x, y))
+                board = board.makeMove(getRandomMove(board))
             machineTurn = not machineTurn
         
         result = board.isGameOver()
@@ -308,9 +320,13 @@ class GameManager:
         return result
 
 if __name__ == "__main__":
-    with open("trainedMachine2.pickle", "rb") as file:
-        machine = pickle.load(file)
-        logging.info("Loaded machine from pickle file.")
+    try:
+        with open("trainedMachine.pickle", "rb") as file:
+            machine = pickle.load(file)
+            logging.info("Loaded machine from pickle file.")
+    except:
+        logging.info("Could not find pickle file, so creating a blank machine.")
+        machine = Machine()
 
     try:
         logging.info("Start training.")
@@ -324,6 +340,6 @@ if __name__ == "__main__":
         logging.info("Stopped training.")
         logging.info("Played {} games in {} minutes.".format(iteration, int((endTime-startTime)/60)))
 
-    with open("trainedMachine2.pickle", "wb") as file:
+    with open("trainedMachine.pickle", "wb") as file:
         pickle.dump(machine, file)
         logging.info("Saved trainedMachine to pickle file.")
